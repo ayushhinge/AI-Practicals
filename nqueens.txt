@@ -1,0 +1,104 @@
+import random
+import math
+from queue import PriorityQueue
+import time
+
+# Utility function to calculate the number of attacking pairs
+def attacking_pairs(board):
+    attacks = 0
+    n = len(board)
+    for i in range(n):
+        for j in range(i + 1, n):
+            if board[i] == board[j] or abs(board[i] - board[j]) == j - i:
+                attacks += 1
+    return attacks
+
+# Function to print the board
+def print_board(board):
+    n = len(board)
+    for row in range(n):
+        line = "".join("Q " if board[col] == row else ". " for col in range(n))
+        print(line)
+    print("\n")
+
+# Hill Climbing Algorithm
+def hill_climbing(n):
+    board = [random.randint(0, n - 1) for _ in range(n)]
+    while True:
+        current_attacks = attacking_pairs(board)
+        if current_attacks == 0:
+            return board
+        neighbors = []
+        for col in range(n):
+            for row in range(n):
+                if board[col] != row:
+                    new_board = list(board)
+                    new_board[col] = row
+                    neighbors.append(new_board)
+        best_neighbor = min(neighbors, key=attacking_pairs)
+        if attacking_pairs(best_neighbor) >= current_attacks:
+            return board  # Local optimum reached
+        board = best_neighbor
+
+# Simulated Annealing Algorithm
+def simulated_annealing(n):
+    board = [random.randint(0, n - 1) for _ in range(n)]
+    temperature = 100
+    cooling_rate = 0.95
+    while temperature > 1:
+        next_board = list(board)
+        col = random.randint(0, n - 1)
+        row = random.randint(0, n - 1)
+        next_board[col] = row
+        delta_e = attacking_pairs(board) - attacking_pairs(next_board)
+        if delta_e > 0 or random.uniform(0, 1) < math.exp(delta_e / temperature):
+            board = next_board
+        temperature *= cooling_rate
+        if attacking_pairs(board) == 0:
+            return board
+    return board
+
+# A* Algorithm
+def a_star(n):
+    pq = PriorityQueue()
+    start = tuple([random.randint(0, n - 1) for _ in range(n)])
+    pq.put((attacking_pairs(start), start))
+    while not pq.empty():
+        _, board = pq.get()
+        if attacking_pairs(board) == 0:
+            return board
+        for col in range(n):
+            for row in range(n):
+                if board[col] != row:
+                    new_board = list(board)
+                    new_board[col] = row
+                    pq.put((attacking_pairs(new_board), tuple(new_board)))
+    return None  # No solution found
+
+# Running the algorithms
+if __name__ == "__main__":
+    n = int(input("Enter the value of N for N-Queens problem: "))
+
+    print("\nSolving using Hill Climbing...")
+    start_time = time.time()
+    solution_hc = hill_climbing(n)
+    end_time = time.time()
+    print("Solution:", solution_hc)
+    print_board(solution_hc)
+    print("Execution Time: {:.4f} seconds\n".format(end_time - start_time))
+
+    print("Solving using Simulated Annealing...")
+    start_time = time.time()
+    solution_sa = simulated_annealing(n)
+    end_time = time.time()
+    print("Solution:", solution_sa)
+    print_board(solution_sa)
+    print("Execution Time: {:.4f} seconds\n".format(end_time - start_time))
+
+    print("Solving using A* Algorithm...")
+    start_time = time.time()
+    solution_astar = a_star(n)
+    end_time = time.time()
+    print("Solution:", solution_astar)
+    print_board(solution_astar)
+    print("Execution Time: {:.4f} seconds\n".format(end_time - start_time))

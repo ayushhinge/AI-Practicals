@@ -1,0 +1,31 @@
+def water_jug_dfs(x, y, target, capacity_x, capacity_y, visited):
+    print(f"Current State: ({x}, {y})")
+    if x == target or y == target:
+        print(f"Reached target: ({x}, {y})")
+        return True
+    if (x, y) in visited:
+        return False
+    visited.add((x, y))
+    
+    # Generate possible next states
+    possible_states = [
+        (capacity_x, y),  # Fill Jug X
+        (x, capacity_y),  # Fill Jug Y
+        (0, y),           # Empty Jug X
+        (x, 0),           # Empty Jug Y
+        (x - min(x, capacity_y - y), y + min(x, capacity_y - y)),  # Pour X → Y
+        (x + min(y, capacity_x - x), y - min(y, capacity_x - x))   # Pour Y → X
+    ]
+    
+    for state in possible_states:
+        if water_jug_dfs(state[0], state[1], target, capacity_x, capacity_y, visited):
+            return True
+    return False
+
+# Example usage
+capacity_x = 4
+capacity_y = 3
+target_z = 2
+visited_states = set()
+
+water_jug_dfs(0, 0, target_z, capacity_x, capacity_y, visited_states)
