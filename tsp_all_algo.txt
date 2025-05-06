@@ -1,0 +1,175 @@
+import random
+import math
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
+from scipy.spatial.distance import cdist
+
+# Generate cities and coordinates
+def generate_cities(n):
+    return np.random.rand(n, 2)
+
+def distance(city1, city2):
+    return np.linalg.norm(city1 - city2)
+
+def total_distance(route, cities):
+    return sum(distance(cities[route[i]], cities[route[i + 1]]) for i in range(len(route) - 1)) + distance(cities[route[-1]], cities[route[0]])
+
+# 1. Greedy Best-First Search (GBFS)
+def greedy_best_first_search(cities):
+    n = len(cities)
+    unvisited = list(range(n))
+    route = [unvisited.pop(0)]  # Start from city 0
+
+    while unvisited:
+        last_visited = route[-1]
+        nearest_city = min(unvisited, key=lambda city: distance(cities[last_visited], cities[city]))
+        route.append(nearest_city)
+        unvisited.remove(nearest_city)
+    
+    return route
+
+# 2. Simulated Annealing (SA)
+def simulated_annealing(cities, temperature=1000, cooling_rate=0.995, iterations=1000):
+    n = len(cities)
+    current_route = list(range(n))
+    current_distance = total_distance(current_route, cities)
+    best_route = current_route.copy()
+    best_distance = current_distance
+
+    for _ in range(iterations):
+        new_route = current_route.copy()
+        i, j = random.sample(range(n), 2)
+        new_route[i], new_route[j] = new_route[j], new_route[i]
+        new_distance = total_distance(new_route, cities)
+
+        if new_distance < current_distance or random.random() < math.exp((current_distance - new_distance) / temperature):
+            current_route = new_route
+            current_distance = new_distance
+            if new_distance < best_distance:
+                best_route = new_route
+                best_distance = new_distance
+
+        temperature *= cooling_rate
+    
+    return best_route
+
+# 3. Genetic Algorithm (GA)
+def genetic_algorithm(cities, population_size=100, generations=500, mutation_rate=0.1):
+    def crossover(parent1, parent2):
+        cut = random.randint(0, len(parent1) - 1)
+        return parent1[:cut] + [city for city in parent2 if city not in parent1[:cut]]
+
+    def mutate(route):
+        if random.random() < mutation_rate:
+            i, j = random.sample(range(len(route)), 2)
+            route[i], route[j] = route[j], route[i]
+
+    population = [random.sample(range(len(cities)), len(cities)) for _ in range(population_size)]
+    best_route = min(population, key=lambda route: total_distance(route, cities))
+    best_distance = total_distance(best_route, cities)
+
+    for _ in range(generations):
+        population.sort(key=lambda route: total_distance(route, cities))
+        new_population = population[:population_size // 2]
+
+        while len(new_population) < population_size:
+            parent1, parent2 = random.sample(new_population[:10], 2)
+            child = crossover(parent1, parent2)
+            mutate(child)
+            new_population.append(child)
+
+        population = new_population
+        new_best_route = min(population, key=lambda route: total_distance(route, cities))
+        new_best_distance = total_distance(new_best_route, cities)
+
+        if new_best_distance < best_distance:
+            best_route = new_best_route
+            best_distance = new_best_distance
+
+    return best_route
+
+# 4. A* Search
+def a_star_search(cities):
+    n = len(cities)
+    start = 0
+    visited = [False] * n
+    visited[start] = True
+    route = [start]
+    current_city = start
+
+    while len(route) < n:
+        nearest_city = None
+        min_f = float('inf')
+        for i in range(n):
+            if not visited[i]:
+                g = distance(cities[current_city], cities[i])
+                h = min(distance(cities[i], cities[j]) for j in range(n) if not visited[j])
+                f = g + h
+                if f < min_f:
+                    min_f = f
+                    nearest_city = i
+
+        route.append(nearest_city)
+        visited[nearest_city] = True
+        current_city = nearest_city
+
+    return route
+
+# Function to visualize the route
+def visualize_route(route, cities, title, color):
+    plt.figure(figsize=(10, 6))
+    for i in range(len(route) - 1):
+        plt.plot([cities[route[i]][0], cities[route[i + 1]][0]],
+                 [cities[route[i]][1], cities[route[i + 1]][1]], color=color,
+                 marker='o', markersize=8)
+    plt.plot([cities[route[-1]][0], cities[route[0]][0]],
+             [cities[route[-1]][1], cities[route[0]][1]], color=color,
+             marker='o', markersize=8)
+
+    for i, city in enumerate(route):
+        plt.text(cities[city][0], cities[city][1], f'{city}', fontsize=12, ha='right')
+
+    plt.title(title)
+    plt.show()
+
+# Function to run all algorithms and benchmark performance
+def run_algorithms():
+    n = 10  # Increase number of cities
+    cities = generate_cities(n)
+
+    # Benchmark Greedy Best-First Search (GBFS)
+    start_time = time.time()
+    gbfs_route = greedy_best_first_search(cities)
+    gbfs_distance = total_distance(gbfs_route, cities)
+    gbfs_time = time.time() - start_time
+    print(f"GBFS Route: {gbfs_route} | Distance: {gbfs_distance:.2f} | Time: {gbfs_time:.4f} seconds")
+    visualize_route(gbfs_route, cities, "Greedy Best-First Search (GBFS)", 'blue')
+
+    # Benchmark Simulated Annealing (SA)
+    start_time = time.time()
+    sa_route = simulated_annealing(cities)
+    sa_distance = total_distance(sa_route, cities)
+    sa_time = time.time() - start_time
+    print(f"SA Route: {sa_route} | Distance: {sa_distance:.2f} | Time: {sa_time:.4f} seconds")
+    visualize_route(sa_route, cities, "Simulated Annealing (SA)", 'red')
+
+    # Benchmark Genetic Algorithm (GA)
+    start_time = time.time()
+    ga_route = genetic_algorithm(cities)
+    ga_distance = total_distance(ga_route, cities)
+    ga_time = time.time() - start_time
+    print(f"GA Route: {ga_route} | Distance: {ga_distance:.2f} | Time: {ga_time:.4f} seconds")
+    visualize_route(ga_route, cities, "Genetic Algorithm (GA)", 'green')
+
+    # Benchmark A* Search
+    start_time = time.time()
+    astar_route = a_star_search(cities)
+    astar_distance = total_distance(astar_route, cities)
+    astar_time = time.time() - start_time
+    print(f"A* Route: {astar_route} | Distance: {astar_distance:.2f} | Time: {astar_time:.4f} seconds")
+    visualize_route(astar_route, cities, "A* Search", 'purple')
+
+if __name__ == "__main__":
+    run_algorithms()
